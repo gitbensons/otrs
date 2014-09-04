@@ -159,7 +159,12 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
                 $(this).removeClass('Hovered');
             })
             .bind('dblclick.Activity', function() {
-                var Path = Core.Config.Get('Config.PopupPathActivity') + "EntityID=" + EntityID + ";ID=" + ActivityID;
+                var Path = Core.Config.Get('Config.PopupPathActivity') + "EntityID=" + EntityID + ";ID=" + ActivityID,
+                    SessionData = Core.App.GetSessionInformation();
+                if ( !Core.Config.Get('SessionIDCookie') && Path.indexOf(SessionData[Core.Config.Get('SessionName')]) === -1 ) {
+                    Path += ';' + encodeURIComponent(Core.Config.Get('SessionName')) + '=' + encodeURIComponent(SessionData[Core.Config.Get('SessionName')]);
+                }
+
                 Core.Agent.Admin.ProcessManagement.ShowOverlay();
                 Core.UI.Popup.OpenPopup(Path, 'Activity');
             });
@@ -224,13 +229,12 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
             text,
             position = { x: 0, y: 0},
             Transition = Core.Agent.Admin.ProcessManagement.ProcessData.Transition,
-            ElementID = Connection.id,
+            ElementID = $TitleElement.find('span').attr('id'),
             CurrentProcessEntityID = $('#ProcessEntityID').val(),
             PathInfo = Core.Agent.Admin.ProcessManagement.ProcessData.Process[CurrentProcessEntityID].Path,
             AssignedTransitionActions = [],
             CanvasWidth, CanvasHeight,
             TooltipWidth, TooltipHeight;
-
 
         $TitleElement.find('a').remove();
         text = '<h4>' + EscapeHTML($TitleElement.text()) + '</h4>';
@@ -439,7 +443,12 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
             .show()
             .unbind('click')
             .bind('click', function () {
-                var Path = Core.Config.Get('Config.PopupPathActivity') + "EntityID=" + ElementID + ";ID=" + Activity[ElementID].ID;
+                var Path = Core.Config.Get('Config.PopupPathActivity') + "EntityID=" + ElementID + ";ID=" + Activity[ElementID].ID,
+                    SessionData = Core.App.GetSessionInformation();
+                if ( !Core.Config.Get('SessionIDCookie') && Path.indexOf(SessionData[Core.Config.Get('SessionName')]) === -1 ) {
+                    Path += ';' + encodeURIComponent(Core.Config.Get('SessionName')) + '=' + encodeURIComponent(SessionData[Core.Config.Get('SessionName')]);
+                }
+
                 Core.Agent.Admin.ProcessManagement.ShowOverlay();
                 Core.UI.Popup.OpenPopup(Path, 'Activity');
                 return false;
@@ -602,7 +611,7 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
             reattach: true,
             overlays: [
                 [ "Diamond", { location: 18, width: 15, length: 25, paintStyle: { fillStyle: '#FFF', outlineWidth: 1, outlineColor: '#000'} } ],
-                [ "Label", { label: '<span title="' + EscapeHTML(TransitionName) + '">' + EscapeHTML(TransitionName) + '</span>', location: 0.5, cssClass: 'TransitionLabel', id: 'label', events: {
+                [ "Label", { label: '<span id="' + EntityID + '" title="' + EscapeHTML(TransitionName) + '">' + EscapeHTML(TransitionName) + '</span>', location: 0.5, cssClass: 'TransitionLabel', id: 'label', events: {
                     mouseenter: function(labelOverlay, originalEvent) {
                         TargetNS.LastTransitionDetails = {
                             LabelOverlay: labelOverlay,
@@ -644,12 +653,18 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
         });
 
         Connection.bind('dblclick', function(Connection, Event) {
-            var EndActivity = Connection.endpoints[1];
+            var EndActivity = Connection.endpoints[1],
+                SessionData = Core.App.GetSessionInformation();
             // Do not open path dialog for dummy connections
             // dblclick on overlays (e.g. labels) propagate to the connection
             // prevent opening path dialog twice if clicked on label
             if (EndActivity !== 'Dummy' && !$(Event.srcElement).hasClass('TransitionLabel')) {
                 Core.Agent.Admin.ProcessManagement.ShowOverlay();
+
+                if ( !Core.Config.Get('SessionIDCookie') && PopupPath.indexOf(SessionData[Core.Config.Get('SessionName')]) === -1 ) {
+                    PopupPath += ';' + encodeURIComponent(Core.Config.Get('SessionName')) + '=' + encodeURIComponent(SessionData[Core.Config.Get('SessionName')]);
+                }
+
                 Core.UI.Popup.OpenPopup(PopupPath, 'Path');
             }
             Event.stopImmediatePropagation();
@@ -665,7 +680,8 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
             TransitionEntityID = Connection.component.getParameter('TransitionID'),
             StartActivityID = Connection.component.sourceId,
             PopupPath = Core.Config.Get('Config.PopupPathPath') + "ProcessEntityID=" + ProcessEntityID + ";TransitionEntityID=" + TransitionEntityID + ";StartActivityID=" + StartActivityID,
-            Transition;
+            Transition,
+            SessionData = Core.App.GetSessionInformation();
 
         if (TargetNS.DragTransitionAction) {
             $(Connection.canvas).addClass('ReadyToDrop');
@@ -692,6 +708,9 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
         if (!$(Connection.canvas).find('.Edit').length) {
             $(Connection.canvas).append('<a class="Edit" title="' + Core.Agent.Admin.ProcessManagement.Localization.TransitionEditLink + '" href="#">&gt;</a>').find('.Edit').bind('click', function(Event) {
                 if (EndActivity !== 'Dummy') {
+                    if ( !Core.Config.Get('SessionIDCookie') && PopupPath.indexOf(SessionData[Core.Config.Get('SessionName')]) === -1 ) {
+                        PopupPath += ';' + encodeURIComponent(Core.Config.Get('SessionName')) + '=' + encodeURIComponent(SessionData[Core.Config.Get('SessionName')]);
+                    }
                     Core.Agent.Admin.ProcessManagement.ShowOverlay();
                     Core.UI.Popup.OpenPopup(PopupPath, 'Path');
                 }
@@ -799,10 +818,10 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
         TargetNS.MakeDraggable();
 
         $('div.TransitionLabel')
-            .delegate('a.Delete', 'mouseenter', function () {
+            .delegate('a.Delete, a.Edit, span', 'mouseenter', function () {
                 TargetNS.HighlightTransitionLabel(TargetNS.LastTransitionDetails.LabelOverlay, TargetNS.LastTransitionDetails.StartElement, TargetNS.LastTransitionDetails.EndElement);
             })
-            .delegate('a.Delete', 'mouseleave', function () {
+            .delegate('a.Delete, a.Edit, span', 'mouseleave', function () {
                 TargetNS.UnHighlightTransitionLabel(TargetNS.LastTransitionDetails.LabelOverlay);
             });
     };
@@ -824,6 +843,7 @@ Core.Agent.Admin.ProcessManagement.Canvas = (function (TargetNS) {
 
     TargetNS.Redraw = function () {
         $('#ShowEntityIDs').removeClass('Visible').text(Core.Agent.Admin.ProcessManagement.Localization.ShowEntityIDs);
+        jsPlumb.reset();
         $('#Canvas').empty();
         TargetNS.Init();
     };

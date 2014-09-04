@@ -174,7 +174,7 @@ Core.UI.TreeSelection = (function (TargetNS) {
             SelectedID     = $SelectObj.val(),
             Multiple       = ($SelectObj.attr('multiple') !== '' && $SelectObj.attr('multiple') !== undefined) ? true : false,
             ElementCount   = $SelectObj.find('option').length,
-            DialogTitle    = $SelectObj.parent().prev('label').text(),
+            DialogTitle    = $SelectObj.parent().prev('label').clone().children().remove().end().text(),
             Elements       = {},
             InDialog       = false,
             StyleSheetURL,
@@ -333,6 +333,15 @@ Core.UI.TreeSelection = (function (TargetNS) {
 
         $('#TreeSearch').find('input').bind('keyup', function() {
             $TreeObj.jstree("search", $(this).val());
+
+            // make sure subtrees of matches nodes are expandable
+            $('.jstree-search')
+                .parent()
+                .removeClass('jstree-open')
+                .addClass('jstree-closed')
+                .find('ins').click(function() {
+                    $(this).nextAll('ul').find('li').show();
+                });
         });
 
         $('#TreeSearch').find('span').bind('click', function() {
@@ -467,12 +476,19 @@ Core.UI.TreeSelection = (function (TargetNS) {
                 DisabledAttr = ' disabled="disabled"';
             }
 
-            SelectData.push({
-                'Key'          : Key,
-                'Value'        : Value,
-                'SelectedAttr' : SelectedAttr,
-                'DisabledAttr' : DisabledAttr
-            });
+            // append the delete filter value on top
+            // and do not push it to the array
+            if ( Key === 'DeleteFilter' ) {
+                $FieldObj.append('<option value="' + Key + '"' + SelectedAttr + DisabledAttr + '>' + Value + '</option>');
+            }
+            else {
+                SelectData.push({
+                    'Key'          : Key,
+                    'Value'        : Value,
+                    'SelectedAttr' : SelectedAttr,
+                    'DisabledAttr' : DisabledAttr
+                });
+            }
         });
 
         SelectData.sort(function(a, b) {
